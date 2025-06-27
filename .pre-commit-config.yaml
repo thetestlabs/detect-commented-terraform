@@ -1,0 +1,21 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.0
+    hooks:
+      - id: ruff
+        name: Ruff Linter
+        args: ["--fix"]
+        types: [python]
+        files: "\\.py$"
+      - id: ruff-format
+        name: Ruff Formatter
+        types: [python]
+        files: "\\.py$"
+
+  - repo: https://github.com/pycqa/isort
+    rev: 6.0.1
+    hooks:
+      - id: isort
+        name: isort (python)
+        types: [python]
+        files: "\\.py$"

@@ -18,19 +18,22 @@ def is_commented_terraform_line(line: str) -> bool:
     )
 
 
-def find_commented_terraform_blocks(lines: List[str]) -> List[int]:
+def find_commented_terraform_blocks(lines: List[str]) -> list[tuple[int, int]]:
     """
-    Returns a list of line numbers (0-based) where a commented-out Terraform block starts.
+    Returns a list of (start_line, end_line) tuples (0-based) for commented-out Terraform blocks.
     """
-    block_start_lines = []
+    blocks = []
     in_block = False
+    block_start = None
     for i, line in enumerate(lines):
         if re.match(r"^\s*#\s*resource ", line):
-            block_start_lines.append(i)
             in_block = True
+            block_start = i
         elif in_block and re.match(r"^\s*#\s*}\s*$", line):
+            blocks.append((block_start, i))
             in_block = False
-    return block_start_lines
+            block_start = None
+    return blocks
 
 
 def scan_file(filepath: Path, repo_root: Path | None = None) -> list[dict]:
@@ -67,15 +70,17 @@ def scan_file(filepath: Path, repo_root: Path | None = None) -> list[dict]:
                         "line_content": line.rstrip(),
                     }
                 )
-        # Block detection
-        for block_start in find_commented_terraform_blocks(lines):
+        # Block detection (now returns ranges)
+        for block_start, block_end in find_commented_terraform_blocks(lines):
             warnings.append(
                 {
                     "file": str(rel_path),
-                    "line": block_start + 1,
+                    "line_range": (block_start + 1, block_end + 1),
                     "block_start": block_start + 1,
+                    "block_end": block_end + 1,
                     "block_first_line": lines[block_start].rstrip(),
-                    "line_content": lines[block_start].rstrip(),
+                    "block_last_line": lines[block_end].rstrip(),
+                    "line_content": f"{lines[block_start].rstrip()} ... {lines[block_end].rstrip()}",
                 }
             )
         # Detect multi-line /* ... */ block comments containing Terraform code
@@ -125,12 +130,20 @@ def main() -> None:
     for file in tf_files:
         warnings = scan_file(file)
         for w in warnings:
-            console.print(
-                f"[bold red]Commented-out Terraform code detected[/bold red] in "
-                f"[bold yellow]{w['file']}[/bold yellow] at line [bold cyan]{w['line']}[/bold cyan]:\n"
-                f"    [dim]{w['block_first_line']}[/dim]",
-                markup=True,
-            )
+            if "line_range" in w:
+                console.print(
+                    f"[bold red]Commented-out Terraform block detected[/bold red] in "
+                    f"[bold yellow]{w['file']}[/bold yellow] at lines [bold cyan]{w['block_start']} - {w['block_end']}[/bold cyan]:\n"
+                    f"    [dim]{w['block_first_line']} ... {w['block_last_line']}[/dim]",
+                    markup=True,
+                )
+            else:
+                console.print(
+                    f"[bold red]Commented-out Terraform code detected[/bold red] in "
+                    f"[bold yellow]{w['file']}[/bold yellow] at line [bold cyan]{w['line']}[/bold cyan]:\n"
+                    f"    [dim]{w['block_first_line']}[/dim]",
+                    markup=True,
+                )
         if warnings:
             found = True
     if found:

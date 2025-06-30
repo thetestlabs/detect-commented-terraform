@@ -3,7 +3,6 @@ import sys
 from typing import List
 from pathlib import Path
 from rich.console import Console
-from rich.text import Text
 
 
 def is_commented_terraform_line(line: str) -> bool:
@@ -126,16 +125,16 @@ def main() -> None:
     for file in tf_files:
         warnings = scan_file(file)
         for w in warnings:
-            text = Text()
-            text.append("[bold red]Commented-out Terraform code detected[/bold red] in ")
-            text.append(f"[bold yellow]{w['file']}[/bold yellow]", style="yellow")
-            text.append(f" at line [bold cyan]{w['line']}[/bold cyan]:\n")
-            text.append(f"    {w['block_first_line']}", style="dim")
-            console.print(text)
+            console.print(
+                f"[bold red]Commented-out Terraform code detected[/bold red] in "
+                f"[bold yellow]{w['file']}[/bold yellow] at line [bold cyan]{w['line']}[/bold cyan]:\n"
+                f"    [dim]{w['block_first_line']}[/dim]",
+                markup=True,
+            )
         if warnings:
             found = True
     if found:
-        console.print("[bold red]❌ Commented-out Terraform code found.[/bold red]")
+        console.print("[bold red]❌ Commented-out Terraform code found.[/bold red]", markup=True)
         sys.exit(1)
     else:
-        console.print("[bold green]✅ No commented-out Terraform code found.[/bold green]")
+        console.print("[bold green]✅ No commented-out Terraform code found.[/bold green]", markup=True)

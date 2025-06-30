@@ -1,0 +1,7 @@
+- id: detect-commented-terraform
+  name: Detect Commented-Out Terraform Code
+  description: Help keep your Terraform code clean and production-ready by detecting commented out code.
+  entry: detect-commented-terraform
+  language: python
+  types: [file]
+  files: \.tf$

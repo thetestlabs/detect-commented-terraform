@@ -1,0 +1,46 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.8
+    hooks:
+      - id: ruff
+        name: Ruff Linter
+        args: ["--fix"]
+        types: [python]
+        files: "\\.py$"
+      - id: ruff-format
+        name: Ruff Formatter
+        types: [python]
+        files: "\\.py$"
+
+  - repo: https://github.com/pre-commit/mirrors-isort
+    rev: v5.13.2
+    hooks:
+      - id: isort
+        name: isort (python)
+        types: [python]
+        files: "\\.py$"
+
+  - repo: https://github.com/psf/black
+    rev: 24.4.2
+    hooks:
+      - id: black
+        name: Black Code Formatter
+        types: [python]
+        files: "\\.py$"
+
+  - repo: https://github.com/microsoft/pyright
+    rev: v1.1.365
+    hooks:
+      - id: pyright
+        name: Pyright Type Checker
+        types: [python]
+        files: "\\.py$"
+
+  - repo: local
+    hooks:
+      - id: detect-commented-terraform
+        name: Detect Commented-Out Terraform Code
+        entry: detect-commented-terraform
+        language: python
+        types: [file]
+        files: ".*\\.tf$"

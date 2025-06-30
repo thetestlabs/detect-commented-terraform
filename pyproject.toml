@@ -1,6 +1,6 @@
 [project]
 name = "detect-commented-terraform"
-version = "1.0.2"
+version = "1.0.3"
 description = "Detect commented-out Terraform code in your codebase"
 readme = "README.md"
 license = { text = "MIT" }
@@ -24,7 +24,9 @@ classifiers = [
     "Topic :: Software Development :: Quality Assurance",
     "Topic :: Utilities"
 ]
-dependencies = []
+dependencies = [
+    "rich>=14.0.0",
+]
 
 [project.scripts]
 detect-commented-terraform = "detect_commented_terraform.cli:main"

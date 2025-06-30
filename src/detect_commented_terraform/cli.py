@@ -2,6 +2,8 @@ import re
 import sys
 from typing import List
 from pathlib import Path
+from rich.console import Console
+from rich.text import Text
 
 
 def is_commented_terraform_line(line: str) -> bool:
@@ -32,22 +34,50 @@ def find_commented_terraform_blocks(lines: List[str]) -> List[int]:
     return block_start_lines
 
 
-def scan_file(filepath: Path) -> List[str]:
+def scan_file(filepath: Path, repo_root: Path | None = None) -> list[dict]:
     """
-    Scan a file for commented-out Terraform code. Returns a list of warning messages.
+    Scan a file for commented-out Terraform code. Returns a list of warning dicts.
     """
     warnings = []
+    if repo_root is None:
+        # Try to find the repo root (directory containing .git or project root)
+        repo_root = Path.cwd()
+        for parent in filepath.parents:
+            if (parent / ".git").exists():
+                repo_root = parent
+                break
+    rel_path = filepath.relative_to(repo_root)
     with open(filepath, encoding="utf-8") as f:
         lines = f.readlines()
         for lineno, line in enumerate(lines, 1):
             if is_commented_terraform_line(line):
+                # Find the first line of the block (if inside a block)
+                block_start = lineno
+                for i in range(lineno - 1, 0, -1):
+                    if lines[i - 1].strip().startswith(
+                        ("# resource", "# module", "# data", "# provider")
+                    ):
+                        block_start = i
+                        break
                 warnings.append(
-                    f"{filepath}:{lineno}: Commented-out Terraform code detected: {line.rstrip()}"
+                    {
+                        "file": str(rel_path),
+                        "line": lineno,
+                        "block_start": block_start,
+                        "block_first_line": lines[block_start - 1].rstrip(),
+                        "line_content": line.rstrip(),
+                    }
                 )
         # Block detection
         for block_start in find_commented_terraform_blocks(lines):
             warnings.append(
-                f"{filepath}:{block_start + 1}: Commented-out Terraform block detected."
+                {
+                    "file": str(rel_path),
+                    "line": block_start + 1,
+                    "block_start": block_start + 1,
+                    "block_first_line": lines[block_start].rstrip(),
+                    "line_content": lines[block_start].rstrip(),
+                }
             )
         # Detect multi-line /* ... */ block comments containing Terraform code
         in_block_comment = False
@@ -58,13 +88,11 @@ def scan_file(filepath: Path) -> List[str]:
                 in_block_comment = True
                 block_comment_lines = [(lineno, line)]
                 if stripped.endswith("*/") and len(stripped) > 4:
-                    # Single-line block comment
                     in_block_comment = False
                     block_comment_lines.append((lineno, line))
             elif in_block_comment:
                 block_comment_lines.append((lineno, line))
                 if "*/" in stripped:
-                    # End of block comment
                     if any(
                         is_commented_terraform_line(L)
                         or re.search(
@@ -73,8 +101,15 @@ def scan_file(filepath: Path) -> List[str]:
                         )
                         for _, L in block_comment_lines
                     ):
+                        first_lineno, first_line = block_comment_lines[0]
                         warnings.append(
-                            f"{filepath}:{block_comment_lines[0][0]}: Commented-out Terraform code detected in /* ... */ block comment."
+                            {
+                                "file": str(rel_path),
+                                "line": first_lineno,
+                                "block_start": first_lineno,
+                                "block_first_line": first_line.rstrip(),
+                                "line_content": "/* ... */ block comment",
+                            }
                         )
                     in_block_comment = False
                     block_comment_lines = []
@@ -85,17 +120,22 @@ def main() -> None:
     """
     CLI entry point: scan staged .tf files for commented-out Terraform code and block commit if found.
     """
-    # Find all .tf files in the repo (for CLI usage)
+    console = Console()
     tf_files = list(Path.cwd().rglob("*.tf"))
     found = False
     for file in tf_files:
         warnings = scan_file(file)
         for w in warnings:
-            print(w)
+            text = Text()
+            text.append("[bold red]Commented-out Terraform code detected[/bold red] in ")
+            text.append(f"[bold yellow]{w['file']}[/bold yellow]", style="yellow")
+            text.append(f" at line [bold cyan]{w['line']}[/bold cyan]:\n")
+            text.append(f"    {w['block_first_line']}", style="dim")
+            console.print(text)
         if warnings:
             found = True
     if found:
-        print("❌ Commented-out Terraform code found.")
+        console.print("[bold red]❌ Commented-out Terraform code found.[/bold red]")
         sys.exit(1)
     else:
-        print("✅ No commented-out Terraform code found.")
+        console.print("[bold green]✅ No commented-out Terraform code found.[/bold green]")

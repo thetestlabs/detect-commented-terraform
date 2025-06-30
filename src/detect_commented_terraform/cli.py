@@ -39,6 +39,7 @@ def find_commented_terraform_blocks(lines: List[str]) -> list[tuple[int, int]]:
 def scan_file(filepath: Path, repo_root: Path | None = None) -> list[dict]:
     """
     Scan a file for commented-out Terraform code. Returns a list of warning dicts.
+    Only detects entire commented-out blocks, not single lines.
     """
     warnings = []
     if repo_root is None:
@@ -51,26 +52,7 @@ def scan_file(filepath: Path, repo_root: Path | None = None) -> list[dict]:
     rel_path = filepath.relative_to(repo_root)
     with open(filepath, encoding="utf-8") as f:
         lines = f.readlines()
-        for lineno, line in enumerate(lines, 1):
-            if is_commented_terraform_line(line):
-                # Find the first line of the block (if inside a block)
-                block_start = lineno
-                for i in range(lineno - 1, 0, -1):
-                    if lines[i - 1].strip().startswith(
-                        ("# resource", "# module", "# data", "# provider")
-                    ):
-                        block_start = i
-                        break
-                warnings.append(
-                    {
-                        "file": str(rel_path),
-                        "line": lineno,
-                        "block_start": block_start,
-                        "block_first_line": lines[block_start - 1].rstrip(),
-                        "line_content": line.rstrip(),
-                    }
-                )
-        # Block detection (now returns ranges)
+        # Only block detection (ignore single lines)
         for block_start, block_end in find_commented_terraform_blocks(lines):
             warnings.append(
                 {
@@ -83,7 +65,7 @@ def scan_file(filepath: Path, repo_root: Path | None = None) -> list[dict]:
                     "line_content": f"{lines[block_start].rstrip()} ... {lines[block_end].rstrip()}",
                 }
             )
-        # Detect multi-line /* ... */ block comments containing Terraform code
+        # Optionally, keep multi-line /* ... */ block detection if desired
         in_block_comment = False
         block_comment_lines = []
         for lineno, line in enumerate(lines, 1):

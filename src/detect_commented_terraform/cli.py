@@ -114,27 +114,19 @@ def main() -> None:
         warnings = scan_file(file)
         for w in warnings:
             # Use a tuple of (file, block_start, block_end) as a unique key
-            key = (w.get("file"), w.get("block_start"), w.get("block_end"))
-            if key in already_reported:
-                continue
-            already_reported.add(key)
+            # Only deduplicate blocks (not single lines)
             if "line_range" in w:
+                key = (w["file"], w["block_start"], w["block_end"])
+                if key in already_reported:
+                    continue
+                already_reported.add(key)
                 console.print(
                     f"[bold red]Commented-out Terraform block detected[/bold red] in "
                     f"[bold yellow]{w['file']}[/bold yellow] at lines [bold cyan]{w['block_start']} - {w['block_end']}[/bold cyan]:\n"
                     f"    [dim]{w['block_first_line']} ... {w['block_last_line']}[/dim]",
                     markup=True,
                 )
-            else:
-                console.print(
-                    f"[bold red]Commented-out Terraform code detected[/bold red] in "
-                    f"[bold yellow]{w['file']}[/bold yellow] at line [bold cyan]{w['line']}[/bold cyan]:\n"
-                    f"    [dim]{w['block_first_line']}[/dim]",
-                    markup=True,
-                )
-        if warnings:
-            found = True
+                found = True
     if found:
         sys.exit(1)
-    else:
-        pass  # No output if no commented-out code found
+    # No output if no commented-out code found

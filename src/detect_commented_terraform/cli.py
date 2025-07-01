@@ -129,7 +129,6 @@ def main() -> None:
         if warnings:
             found = True
     if found:
-        console.print("[bold red]❌ Commented-out Terraform code found.[/bold red]", markup=True)
         sys.exit(1)
     else:
-        console.print("[bold green]✅ No commented-out Terraform code found.[/bold green]", markup=True)
+        pass  # No output if no commented-out code found

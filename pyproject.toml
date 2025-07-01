@@ -1,6 +1,6 @@
 [project]
 name = "detect-commented-terraform"
-version = "1.0.6"
+version = "1.0.7"
 description = "Detect commented-out Terraform code in your codebase"
 readme = "README.md"
 license = { text = "MIT" }

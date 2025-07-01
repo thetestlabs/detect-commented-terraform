@@ -109,9 +109,15 @@ def main() -> None:
     console = Console()
     tf_files = list(Path.cwd().rglob("*.tf"))
     found = False
+    already_reported = set()
     for file in tf_files:
         warnings = scan_file(file)
         for w in warnings:
+            # Use a tuple of (file, block_start, block_end) as a unique key
+            key = (w.get("file"), w.get("block_start"), w.get("block_end"))
+            if key in already_reported:
+                continue
+            already_reported.add(key)
             if "line_range" in w:
                 console.print(
                     f"[bold red]Commented-out Terraform block detected[/bold red] in "

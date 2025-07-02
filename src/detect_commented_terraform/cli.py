@@ -107,14 +107,12 @@ def main() -> None:
     CLI entry point: scan staged .tf files for commented-out Terraform code and block commit if found.
     """
     console = Console()
-    tf_files = list(Path.cwd().rglob("*.tf"))
+    tf_files = set(Path.cwd().rglob("*.tf"))  # Use a set to avoid duplicate files
     found = False
     already_reported = set()
     for file in tf_files:
         warnings = scan_file(file)
         for w in warnings:
-            # Use a tuple of (file, block_start, block_end) as a unique key
-            # Only deduplicate blocks (not single lines)
             if "line_range" in w:
                 key = (w["file"], w["block_start"], w["block_end"])
                 if key in already_reported:

@@ -13,8 +13,7 @@ def is_commented_terraform_line(line: str) -> bool:
     KEYWORDS = r"(resource|variable|output|module|provider|data|locals|terraform)"
     PROPERTY_PATTERN = r"(\s*#.*\b\w+\s*=\s*.+|\s*#.*[{}])"
     return bool(
-        re.match(r"^\s*(#|//|/\*).*\b" + KEYWORDS + r"\b", line)
-        or re.match(PROPERTY_PATTERN, line)
+        re.match(r"^\s*(#|//|/\*).*\b" + KEYWORDS + r"\b", line) or re.match(PROPERTY_PATTERN, line)
     )
 
 
@@ -107,10 +106,12 @@ def main() -> None:
     CLI entry point: scan staged .tf files for commented-out Terraform code and block commit if found.
     """
     console = Console()
-    tf_files = set(Path.cwd().rglob("*.tf"))  # Use a set to avoid duplicate files
+    # Use a set of absolute file paths to guarantee uniqueness
+    tf_files = {str(p.resolve()) for p in Path.cwd().rglob("*.tf")}
     found = False
     already_reported = set()
-    for file in tf_files:
+    for file_path in tf_files:
+        file = Path(file_path)
         warnings = scan_file(file)
         for w in warnings:
             if "line_range" in w:

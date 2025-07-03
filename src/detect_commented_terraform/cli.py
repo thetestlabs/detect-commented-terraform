@@ -103,11 +103,14 @@ def scan_file(filepath: Path, repo_root: Path | None = None) -> list[dict]:
 
 def main() -> None:
     """
-    CLI entry point: scan staged .tf files for commented-out Terraform code and block commit if found.
+    CLI entry point: scan .tf files for commented-out Terraform code and block commit if found.
+    Accepts file paths as arguments (for pre-commit), or scans all .tf files if none given.
     """
     console = Console()
-    tf_files = {str(p.resolve()) for p in Path.cwd().rglob("*.tf")}
-    console.print(f"[debug] tf_files: {tf_files}", style="dim")
+    if len(sys.argv) > 1:
+        tf_files = {str(Path(f).resolve()) for f in sys.argv[1:] if f.endswith(".tf")}
+    else:
+        tf_files = {str(p.resolve()) for p in Path.cwd().rglob("*.tf")}
     found = False
     already_reported = set()
     for file_path in tf_files:
@@ -116,7 +119,6 @@ def main() -> None:
         for w in warnings:
             if "line_range" in w:
                 key = (w["file"], w["block_start"], w["block_end"])
-                console.print(f"[debug] key: {key}", style="dim")
                 if key in already_reported:
                     continue
                 already_reported.add(key)

@@ -106,8 +106,8 @@ def main() -> None:
     CLI entry point: scan staged .tf files for commented-out Terraform code and block commit if found.
     """
     console = Console()
-    # Use a set of absolute file paths to guarantee uniqueness
     tf_files = {str(p.resolve()) for p in Path.cwd().rglob("*.tf")}
+    console.print(f"[debug] tf_files: {tf_files}", style="dim")
     found = False
     already_reported = set()
     for file_path in tf_files:
@@ -116,6 +116,7 @@ def main() -> None:
         for w in warnings:
             if "line_range" in w:
                 key = (w["file"], w["block_start"], w["block_end"])
+                console.print(f"[debug] key: {key}", style="dim")
                 if key in already_reported:
                     continue
                 already_reported.add(key)

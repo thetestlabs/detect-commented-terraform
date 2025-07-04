@@ -1,6 +1,6 @@
 [project]
 name = "detect-commented-terraform"
-version = "1.0.16"
+version = "1.0.17"
 description = "Detect commented-out Terraform code in your codebase"
 readme = "README.md"
 license = { text = "MIT" }
@@ -25,7 +25,9 @@ classifiers = [
     "Topic :: Utilities"
 ]
 dependencies = [
+    "loguru>=0.7.3",
     "rich>=14.0.0",
+    "typer>=0.16.0",
 ]
 
 [project.scripts]

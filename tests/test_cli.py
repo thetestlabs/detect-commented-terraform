@@ -1,12 +1,10 @@
 import sys
 import subprocess
-from pathlib import Path
-import pytest
-from detect_commented_terraform.cli import (
-    is_commented_terraform_line,
-    find_commented_terraform_blocks,
-    scan_file,
-)
+
+
+from detect_commented_terraform.cli import scan_file
+from detect_commented_terraform.cli import is_commented_terraform_line
+from detect_commented_terraform.cli import find_commented_terraform_blocks
 
 
 def run_cli(tmp_path, tf_content):

@@ -120,9 +120,7 @@ def scan_file(filepath: Path, repo_root: Path | None = None) -> list[dict]:
 
 
 def main(
-    files: list[str] = typer.Argument(
-        None, help="Terraform files to scan (default: all .tf files)"
-    ),
+    files: list[str] | None = None
 ) -> None:
     """
     CLI entry point: scan .tf files for commented-out Terraform code and block commit if found.
@@ -131,10 +129,11 @@ def main(
     console = Console()
     logger.remove()  # Remove default stderr logger
     logger.add(sys.stderr, level="WARNING")  # Only show warnings/errors by default
-    if files:
-        tf_files = {str(Path(f).resolve()) for f in files if f.endswith(".tf")}
-    else:
+    # Fix: Typer passes files=None if not provided, or a list if provided
+    if files is None:
         tf_files = {str(p.resolve()) for p in Path.cwd().rglob("*.tf")}
+    else:
+        tf_files = {str(Path(f).resolve()) for f in files if isinstance(f, str) and f.endswith(".tf")}
     found = False
     already_reported = set()
     for file_path in tf_files:

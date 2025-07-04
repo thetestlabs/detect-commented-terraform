@@ -29,7 +29,6 @@ def find_commented_terraform_blocks(lines: List[str]) -> list[tuple[int, int]]:
     # Regex for all Terraform block types
     block_types = r"resource|variable|output|module|provider|data|locals|terraform"
     block_start_re = re.compile(rf"^\s*#\s*({block_types})\b.*\{{\s*$")
-    block_end_re = re.compile(r"^\s*#\s*}}\s*$")
     single_line_block_re = re.compile(rf"^\s*#\s*({block_types})\b.*\{{.*}}\s*$")
     for i, line in enumerate(lines):
         if single_line_block_re.match(line):
@@ -37,7 +36,7 @@ def find_commented_terraform_blocks(lines: List[str]) -> list[tuple[int, int]]:
         elif block_start_re.match(line):
             in_block = True
             block_start = i
-        elif in_block and block_end_re.match(line):
+        elif in_block and re.match(r"^\s*#\s*}\s*$", line):
             blocks.append((block_start, i))
             in_block = False
             block_start = None

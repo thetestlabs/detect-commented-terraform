@@ -20,15 +20,20 @@ def is_commented_terraform_line(line: str) -> bool:
 def find_commented_terraform_blocks(lines: List[str]) -> list[tuple[int, int]]:
     """
     Returns a list of (start_line, end_line) tuples (0-based) for commented-out Terraform blocks.
+    Detects blocks for resource, variable, output, module, provider, data, locals, terraform.
     """
     blocks = []
     in_block = False
     block_start = None
+    # Regex for all Terraform block types
+    block_types = r"resource|variable|output|module|provider|data|locals|terraform"
+    block_start_re = re.compile(rf"^\s*#\s*({block_types})\b")
+    block_end_re = re.compile(r"^\s*#\s*}\s*$")
     for i, line in enumerate(lines):
-        if re.match(r"^\s*#\s*resource ", line):
+        if block_start_re.match(line):
             in_block = True
             block_start = i
-        elif in_block and re.match(r"^\s*#\s*}\s*$", line):
+        elif in_block and block_end_re.match(line):
             blocks.append((block_start, i))
             in_block = False
             block_start = None

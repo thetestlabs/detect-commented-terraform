@@ -1,0 +1,97 @@
+name: CI
+run-name: CI Workflow initiated by ${{ github.actor }}
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - "CHANGELOG.md"
+  workflow_dispatch:
+
+jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Format and lint code with Ruff
+        run: |
+          uv run ruff format --check src tests
+          uv run ruff check src tests
+
+      - name: Type check with mypy
+        run: uv run mypy src
+
+      - name: Security check with bandit
+        run: uv run bandit -c pyproject.toml -r src/
+
+      - name: Check YAML files
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: .github/workflows/ .pre-commit-config.yaml .readthedocs.yaml .releaserc.json
+          config_file: .yamllint
+
+      - name: Check Markdown files
+        run: |
+          echo "🔍 Checking Markdown files (excluding .venv and other build directories)..."
+          npx markdownlint-cli2 \
+            --config .markdownlint.json \
+            "*.md" "docs/**/*.md"
+
+      - name: Check JSON files
+        run: |
+          find . -name "*.json" -not -path "./node_modules/*" -not -path "./.venv/*" | \
+            xargs -I {} python -m json.tool {} > /dev/null
+
+      - name: Check TOML files
+        run: |
+          uv run python -c "import toml; toml.load('pyproject.toml')"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint-and-format]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Build package
+        run: uv build
+
+      - name: Check package
+        run: uv run twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

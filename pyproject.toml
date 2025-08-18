@@ -1,0 +1,179 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "detect-commented-terraform"
+version = "1.0.0"
+description = "Detect commented-out Terraform code in your codebase"
+readme = "README.md"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Quality Assurance",
+    "Topic :: Software Development :: Version Control :: Git",
+]
+keywords = ["terraform", "opentofu", "terragrunt", "linting", "pre-commit", "code-quality"]
+requires-python = ">=3.9"
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "loguru>=0.7.0",
+    "typing-extensions>=4.0.0; python_version<'3.10'",
+]
+[[project.authors]]
+name = "Chris McQuaid"
+email = "chris@thetestlabs.io"
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-xdist>=3.0.0",
+    "pytest-mock>=3.10.0",
+    "ruff>=0.12.4",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+    "toml>=0.10.2",
+    "twine>=4.0.0",
+    "bandit[toml]>=1.8.6",
+    "safety>=3.5.2",
+    "types-toml>=0.10.0",
+]
+docs = [
+    "sphinx>=7.0.0",
+    "sphinx-rtd-theme>=2.0.0",
+    "sphinx-autodoc-typehints>=1.20.0",
+    "myst-parser>=2.0.0",
+]
+
+[project.license]
+file = "LICENSE"
+
+[project.urls]
+Homepage = "https://github.com/thetestlabs/detect-commented-terraform"
+Repository = "https://github.com/thetestlabs/detect-commented-terraform"
+Issues = "https://github.com/thetestlabs/detect-commented-terraform/issues"
+
+[project.scripts]
+detect-commented-terraform = "detect_commented_terraform.cli:app"
+
+[tool.mypy]
+python_version = "3.9"
+linelength = 120
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+[[tool.mypy.overrides]]
+module = ["tests.*", "demo", "detect_commented_terraform.cli"]
+disallow_untyped_decorators = false
+
+[tool.bandit]
+exclude_dirs = ["tests", "docs"]
+skips = ["B101"]
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+exclude = [
+    ".eggs",
+    ".git",
+    ".mypy_cache",
+    ".tox",
+    ".venv",
+    "venv",
+    "_build",
+    "buck-out",
+    "build",
+    "dist",
+]
+
+[tool.pre-commit-update]
+all_versions = false
+verbose = true
+warnings = true
+jobs = 10
+
+[project.entry-points.pre_commit_hooks]
+detect-commented-terraform = "detect_commented_terraform.pre_commit:main"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "C4",
+    "UP",
+    "ARG",
+    "SIM",
+    "PTH",
+    "ERA",
+    "PL",
+    "RUF",
+]
+ignore = ["E501", "PLR0913", "PLR2004", "UP007"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--cov=src/detect_commented_terraform --cov-report=term-missing --cov-report=html --cov-report=xml"
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/test_*"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
+show_missing = true
+skip_covered = false
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ARG", "PLR2004"]
+"docs/*" = ["ALL"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["detect_commented_terraform"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/detect_commented_terraform"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/README.md", "/LICENSE"]

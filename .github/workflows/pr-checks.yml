@@ -1,0 +1,163 @@
+name: PR Checks
+run-name: PR Checks Workflow initiated by ${{ github.actor }}
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+jobs:
+  comprehensive-checks:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Format and lint Python code with Ruff
+        run: |
+          echo "🔍 Formatting Python code with Ruff..."
+          uv run ruff format src tests
+          echo "✅ Code formatted with Ruff"
+
+          echo "🔍 Linting Python code with Ruff..."
+          uv run ruff check src tests --fix
+          echo "✅ Code linted with Ruff"
+
+      - name: Type check Python code with mypy
+        run: |
+          echo "🔍 Type checking Python code..."
+          uv run mypy src
+
+      - name: Check YAML files
+        uses: ibiqlik/action-yamllint@v3
+        with:
+          file_or_dir: .github/workflows/ .pre-commit-config.yaml .readthedocs.yaml
+          config_file: .yamllint
+
+      - name: Check Markdown files
+        run: |
+          echo "🔍 Checking Markdown files (excluding .venv and other build directories)..."
+          npx markdownlint-cli2 \
+            --config .markdownlint.json \
+            "*.md" "docs/**/*.md"
+
+      - name: Check JSON files syntax
+        run: |
+          echo "🔍 Checking JSON files..."
+          uv run python -c "
+          import json
+          import glob
+          import sys
+
+          for file in glob.glob('**/*.json', recursive=True):
+              if not any(x in file for x in ['.venv', 'node_modules', '.git']):
+                  try:
+                      with open(file, 'r') as f:
+                          json.load(f)
+                      print(f'✅ {file}')
+                  except json.JSONDecodeError as e:
+                      print(f'❌ {file}: {e}')
+                      sys.exit(1)
+          "
+
+      - name: Check TOML files syntax
+        run: |
+          echo "🔍 Checking TOML files..."
+          uv run python -c "
+          import toml
+          import glob
+          import sys
+
+          for file in glob.glob('**/*.toml', recursive=True):
+              if not any(x in file for x in ['.venv', 'node_modules', '.git']):
+                  try:
+                      toml.load(file)
+                      print(f'✅ {file}')
+                  except Exception as e:
+                      print(f'❌ {file}: {e}')
+                      sys.exit(1)
+          "
+
+      - name: Check for common issues
+        run: |
+          echo "🔍 Checking for common issues..."
+
+          # Check for TODO/FIXME comments
+          echo "Checking for TODO/FIXME comments..."
+          if grep -r "TODO\|FIXME\|XXX" src/ tests/ --include="*.py" | grep -v "test_" | head -5; then
+            echo "⚠️  Found TODO/FIXME comments (not blocking)"
+          fi
+
+          # Check for print statements (should use logging)
+          echo "Checking for print statements..."
+          if grep -r "print(" src/ --include="*.py" | grep -v "__main__" | head -5; then
+            echo "⚠️  Found print statements, consider using logging instead"
+          fi
+
+          # Check for hardcoded secrets/tokens
+          echo "Checking for potential secrets..."
+          if grep -ri "password\|secret\|token\|key" src/ tests/ --include="*.py" | \
+             grep -v "test_" | grep -v "# " | head -3; then
+            echo "⚠️  Found potential secrets (please review)"
+          fi
+
+          echo "✅ Common issues check completed"
+
+      # - name: Run pre-commit hooks
+      #   run: |
+      #     echo "🔍 Running pre-commit hooks..."
+      #     pre-commit run --all-files --show-diff-on-failure || exit 1
+
+      - name: Build package to verify setup
+        run: |
+          echo "📦 Building package to verify setup..."
+          uv build
+          echo "✅ Package build successful"
+
+      - name: Test package installation
+        run: |
+          echo "📦 Testing package installation..."
+          uv run pip install dist/*.whl
+          echo "✅ Package installation successful"
+
+      - name: Comment on PR with results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const jobStatus = '${{ job.status }}';
+
+            let body;
+            if (jobStatus === 'success') {
+              body = '✅ All PR checks passed! Your code looks great and follows all formatting and linting standards.';
+            } else {
+              body = '❌ Some PR checks failed. Please review the workflow results and fix any issues before merging.';
+            }
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

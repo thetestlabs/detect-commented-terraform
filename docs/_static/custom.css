@@ -1,0 +1,70 @@
+/* Custom CSS for detect-commented-terraform documentation */
+
+/* Add custom styling for the Furo theme */
+.highlight .hll {
+    background-color: #ffffcc
+}
+
+.highlight {
+    background: #f8f8f8;
+}
+
+/* Code blocks */
+pre {
+    background-color: #f8f8f8;
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    font-size: 85%;
+    line-height: 1.45;
+    overflow: auto;
+    padding: 16px;
+}
+
+/* Terminal output styling */
+.highlight-bash .highlight {
+    background: #2d3748;
+    color: #e2e8f0;
+}
+
+/* Custom admonition colors */
+.admonition.warning {
+    border-color: #f59e0b;
+}
+
+.admonition.note {
+    border-color: #3b82f6;
+}
+
+.admonition.tip {
+    border-color: #10b981;
+}
+
+/* Logo and branding */
+.sidebar-brand {
+    font-weight: 600;
+    color: #1a202c;
+}
+
+/* Navigation improvements */
+.sidebar-tree .toctree-l1>.reference {
+    font-weight: 500;
+}
+
+/* Table styling */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1rem 0;
+}
+
+table th,
+table td {
+    border: 1px solid #e1e4e8;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+table th {
+    background-color: #f6f8fa;
+    font-weight: 600;
+}

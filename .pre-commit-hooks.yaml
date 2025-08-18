@@ -1,0 +1,6 @@
+- id: detect-commented-terraform
+  name: Detect Commented Terraform
+  entry: python -m detect_commented_terraform.pre_commit
+  language: python
+  files: \.(tf|tofu|tfvars|hcl)$
+  pass_filenames: true

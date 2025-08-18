@@ -1,0 +1,138 @@
+name: Documentation
+run-name: Docs Workflow initiated by ${{ github.actor }}
+
+# Ensure only one docs build runs at a time
+# Cancel in-progress builds when new ones are triggered
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "src/detect_commented_terraform/**"
+      - "README.md"
+      - "pyproject.toml"
+      - ".readthedocs.yaml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "src/detect_commented_terraform/**"
+      - "README.md"
+      - "pyproject.toml"
+      - ".readthedocs.yaml"
+  workflow_run:
+    workflows: ["Release"]
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    # Handle different trigger scenarios:
+    # - Skip push events with [skip ci] (release commits)
+    # - Only run workflow_run events if the Release workflow succeeded
+    # - Always run for PRs and manual dispatch
+    if: >
+      (github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]')) &&
+      (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
+    steps:
+      - name: Debug workflow trigger
+        run: |
+          echo "🔍 Workflow triggered by: ${{ github.event_name }}"
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "📋 Release workflow status: ${{ github.event.workflow_run.conclusion }}"
+            echo "🏷️  Release workflow run: ${{ github.event.workflow_run.html_url }}"
+          fi
+          echo "📅 Repository: ${{ github.repository }}"
+          echo "🌿 Branch: ${{ github.ref }}"
+
+      - uses: actions/checkout@v4
+        with:
+          # For workflow_run events, checkout the commit that triggered the original workflow
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Wait for release changes to settle
+        if: github.event_name == 'workflow_run'
+        run: |
+          echo "⏳ Waiting for release changes to settle..."
+          sleep 10
+          echo "✅ Ready to build documentation with updated versions"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "latest"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          uv sync --frozen --no-dev --group docs
+
+      - name: Build documentation
+        run: |
+          uv run sphinx-build -b html docs docs/_build/html -W --keep-going
+
+      - name: Check documentation build
+        run: |
+          if [ ! -f "docs/_build/html/index.html" ]; then
+            echo "Documentation build failed - index.html not found"
+            exit 1
+          fi
+          echo "Documentation built successfully"
+          echo "📚 Documentation available at: docs/_build/html/index.html"
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation-${{ github.event_name == 'pull_request' && 'preview' || 'build' }}
+          path: docs/_build/html/
+          retention-days: 30
+
+      - name: Comment on PR with docs preview
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '📚 **Documentation Preview Built Successfully**\n\n' +
+                    'The documentation has been built and validated for this PR. ' +
+                    'You can download the preview from the workflow artifacts.\n\n' +
+                    '⚠️ **Note**: ReadTheDocs will only be updated when this PR is merged to main.'
+            })
+
+  notify-readthedocs:
+    runs-on: ubuntu-latest
+    needs: build-docs
+    # Only trigger ReadTheDocs on main branch pushes (not PRs)
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Trigger ReadTheDocs build
+        run: |
+          if [ -n "${{ secrets.READTHEDOCS_TOKEN }}" ]; then
+            curl -X POST \
+              -H "Authorization: Token ${{ secrets.READTHEDOCS_TOKEN }}" \
+              https://readthedocs.org/api/v3/projects/detect-commented-terraform/versions/latest/builds/
+            echo "✅ ReadTheDocs build triggered"
+          else
+            echo "⚠️  ReadTheDocs token not found, skipping build trigger"
+          fi
